@@ -100,7 +100,6 @@ const router = createRouter({
 router.beforeEach((to, from) => {
   console.log(from.name, '->', to.name)
   if (to.meta.requiresAuth && !isAuthenticated.value) {
-    // Redirect to the login page with the originally requested page as the redirect query parameter
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 })
@@ -110,5 +109,4 @@ router.afterEach((to, from) => {
   console.log(`Successfully navigated to: ${to.fullPath}`)
 })
 
-// Export the router instance
 export default router
