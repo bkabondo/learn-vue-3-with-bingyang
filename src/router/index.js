@@ -1,16 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Import the components that we want to route to
-import Home from '@/views/Home.vue'
-import BlogPosts from '@/views/BlogPosts.vue'
-import About from '@/views/About.vue'
-import BlogPost from '@/views/BlogPost.vue'
-import BlogPostsGreeting from '@/views/BlogPostsGreeting.vue'
-import NotFound from '@/views/NotFound.vue'
-import Ads from '@/views/Ads.vue'
-import Login from '@/views/Login.vue'
-import MainLayout from '@/views/MainLayout.vue'
-import { isAuthenticated } from '@/apis/auth'
+// No need to import the components here, they will be lazy-loaded
+import { getUserRole, isAuthenticated } from '@/apis/auth'
 
 // Create a router instance
 const router = createRouter({
@@ -35,20 +26,22 @@ const router = createRouter({
     {
       path: '/',
       name: 'mainLayout',
-      component: MainLayout,
+      component: () => import('@/views/MainLayout.vue'),
       redirect: { name: 'home' },
       children: [
         {
           path: '/home',
           name: 'home',
-          component: Home,
-          meta: { requiresAuth: false },
+          component: () => import('@/views/Home.vue'),
+          meta: { requiresAuth: false, title: 'Home', isNavLink: true },
         },
         {
           path: '/blogPosts',
           name: 'blogPosts',
-          component: BlogPosts,
+          component: () => import('@/views/BlogPosts.vue'),
           meta: {
+            title: 'Blog Posts',
+            isNavLink: true,
             enterAnimation: 'animate__animated animate__bounceIn',
             leaveAnimation: 'animate__animated animate__bounceOut',
           },
@@ -57,15 +50,15 @@ const router = createRouter({
             {
               path: '',
               name: 'blogPostsGreeting',
-              component: BlogPostsGreeting,
+              component: () => import('@/views/BlogPostsGreeting.vue'),
               meta: { requiresAuth: false },
             },
             {
               path: '/blogPosts/:id(\\d+)',
               name: 'blogPost',
               components: {
-                default: BlogPost,
-                sidebar: Ads,
+                default: () => import('@/views/BlogPost.vue'),
+                sidebar: () => import('@/views/Ads.vue'),
               },
               meta: {
                 requiresAuth: true,
@@ -77,21 +70,21 @@ const router = createRouter({
         {
           path: '/about',
           name: 'about',
-          component: About,
-          meta: { requiresAuth: false },
+          component: () => import('@/views/About.vue'),
+          meta: { requiresAuth: false, title: 'About', isNavLink: true },
         },
       ],
     },
     {
       path: '/login',
       name: 'login',
-      component: Login,
+      component: () => import('@/views/Login.vue'),
       meta: { requiresAuth: false },
     },
     {
       path: '/:pathMatch(.*)*', // Match any path that hasn't been matched by a previous route
       name: 'notFound',
-      component: NotFound,
+      component: () => import('@/views/NotFound.vue'),
       meta: { requiresAuth: false },
     },
   ],
@@ -100,7 +93,14 @@ const router = createRouter({
 router.beforeEach((to, from) => {
   console.log(from.name, '->', to.name)
   if (to.meta.requiresAuth && !isAuthenticated.value) {
+    // Redirect to the login page with the originally requested page as the redirect query parameter
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  const userRole = getUserRole()
+  // Check role-based access
+  if (to.meta.roles && !to.meta.roles.includes(userRole)) {
+    return { name: 'home' } // Redirect to the home page
   }
 })
 
@@ -109,4 +109,5 @@ router.afterEach((to, from) => {
   console.log(`Successfully navigated to: ${to.fullPath}`)
 })
 
+// Export the router instance
 export default router
